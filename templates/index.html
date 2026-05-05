@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Data Consolidation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #eef2f7;
+            min-height: 100vh;
+            color: #0f172a;
+            font-size: 13px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ── */
+        .app-header {
+            background: linear-gradient(135deg, #0c1e3c 0%, #1a365d 60%, #1e4a82 100%);
+            color: white;
+            padding: 0 32px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 0 rgba(255,255,255,.08), 0 2px 8px rgba(0,0,0,.25);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .header-brand { display: flex; align-items: center; gap: 12px; }
+        .header-icon {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,.12);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .app-header h1 { font-size: 15px; font-weight: 600; letter-spacing: -.3px; }
+        .app-header p  { font-size: 11px; opacity: .55; margin-top: 1px; font-weight: 400; }
+
+        /* ── Tabs ── */
+        .tabs-bar {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 32px;
+            display: flex;
+            gap: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        }
+        .tab {
+            padding: 14px 20px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            transition: color .15s, border-color .15s;
+            font-family: inherit;
+            letter-spacing: -.1px;
+        }
+        .tab:hover    { color: #1a365d; }
+        .tab.active   { color: #1a365d; border-bottom-color: #1a365d; font-weight: 600; }
+        .tab:disabled { opacity: .35; cursor: not-allowed; }
+
+        /* ── Page wrapper ── */
+        .page { max-width: 100%; margin: 0; padding: 20px 32px; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── Cards ── */
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 22px 26px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.04);
+        }
+        .card + .card { margin-top: 16px; }
+        .card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px;
+        }
+        .card-title { font-size: 14px; font-weight: 600; color: #0f172a; }
+        .card-sub   { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+        /* ── Upload grid ── */
+        .upload-grid   { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 12px; }
+        .upload-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; max-width: 60%; margin-bottom: 24px; }
+
+        .upload-tile {
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 14px 16px;
+            background: #f8fafc;
+            transition: border-color .2s, background .2s, box-shadow .2s;
+            cursor: pointer;
+        }
+        .upload-tile:hover {
+            border-color: #93c5fd;
+            background: #eff6ff;
+            box-shadow: 0 0 0 3px rgba(37,99,235,.06);
+        }
+        .upload-tile.done {
+            border-color: #22c55e;
+            border-style: solid;
+            background: #f0fdf4;
+            box-shadow: 0 0 0 3px rgba(34,197,94,.07);
+        }
+        .upload-tile .tile-label {
+            font-size: 11px; font-weight: 600;
+            color: #475569; text-transform: uppercase; letter-spacing: .6px;
+            margin-bottom: 8px; display: flex; align-items: center; gap: 5px;
+        }
+        .tick { color: #22c55e; display: none; font-size: 12px; }
+        .upload-tile.done .tick { display: inline; }
+        .upload-tile input[type="file"] { width: 100%; font-size: 11.5px; margin-top: 4px; color: #475569; }
+        .upload-tile .fname {
+            font-size: 11px; color: #16a34a; margin-top: 6px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-weight: 500;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 500;
+            cursor: pointer; border: none; transition: all .15s; font-family: inherit;
+            letter-spacing: -.1px; white-space: nowrap;
+        }
+        .btn:active   { transform: scale(.97); }
+        .btn:disabled { opacity: .42; cursor: not-allowed; }
+        .btn-blue   { background: #2563eb; color: white; box-shadow: 0 1px 3px rgba(37,99,235,.3); }
+        .btn-blue:hover:not(:disabled)   { background: #1d4ed8; box-shadow: 0 2px 6px rgba(37,99,235,.4); }
+        .btn-green  { background: #16a34a; color: white; box-shadow: 0 1px 3px rgba(22,163,74,.3); }
+        .btn-green:hover:not(:disabled)  { background: #15803d; }
+        .btn-indigo { background: #4f46e5; color: white; box-shadow: 0 1px 3px rgba(79,70,229,.3); }
+        .btn-indigo:hover:not(:disabled) { background: #4338ca; }
+        .btn-ghost  { background: white; color: #374151; border: 1px solid #d1d5db; }
+        .btn-ghost:hover:not(:disabled)  { background: #f9fafb; border-color: #9ca3af; }
+
+        /* ── Stats ── */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(3,1fr);
+            gap: 14px; margin-bottom: 16px;
+        }
+        .stat-tile {
+            background: white; border: 1px solid #e2e8f0;
+            border-radius: 12px; padding: 20px 22px;
+            display: flex; align-items: center; gap: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.04);
+            transition: box-shadow .2s;
+        }
+        .stat-tile:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+        .stat-icon {
+            width: 44px; height: 44px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; flex-shrink: 0;
+        }
+        .stat-icon.total   { background: #eff6ff; }
+        .stat-icon.active  { background: #f0fdf4; }
+        .stat-icon.hold    { background: #fffbeb; }
+        .stat-body { min-width: 0; }
+        .stat-num  { font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+        .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .6px; margin-top: 4px; font-weight: 500; }
+        .stat-num.total  { color: #0f172a; }
+        .stat-num.active { color: #16a34a; }
+        .stat-num.hold   { color: #d97706; }
+
+        /* ── Duplicate alert ── */
+        .dup-alert {
+            background: #fffbeb; border: 1px solid #fcd34d;
+            border-left: 4px solid #f59e0b;
+            border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;
+        }
+        .dup-title { font-size: 13px; font-weight: 600; color: #92400e; margin-bottom: 6px; }
+        .dup-sub   { font-size: 11.5px; color: #78350f; margin-bottom: 10px; opacity: .85; }
+        .dup-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+        .dup-pill  {
+            background: #fde68a; color: #78350f;
+            padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+            border: 1px solid #fbbf24;
+        }
+        .dup-pill-src { font-weight: 400; opacity: .75; }
+
+        /* ── Restored badge ── */
+        .restored-bar {
+            background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+            padding: 9px 16px; font-size: 12px; color: #1e40af;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .restored-bar a { color: #dc2626; font-weight: 500; text-decoration: none; }
+        .restored-bar a:hover { text-decoration: underline; }
+
+        /* ── Filters row ── */
+        .filters-row {
+            display: flex; gap: 8px; align-items: center;
+            margin-bottom: 14px; flex-wrap: wrap;
+        }
+        .search-wrap {
+            position: relative; width: 240px;
+        }
+        .search-wrap .s-icon {
+            position: absolute; left: 10px; top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8; font-size: 14px; pointer-events: none;
+            line-height: 1;
+        }
+        .search-wrap input {
+            width: 100%; padding: 8px 11px 8px 32px;
+            border: 1px solid #d1d5db; border-radius: 7px;
+            font-size: 13px; color: #0f172a; font-family: inherit;
+            background: white; transition: border-color .15s, box-shadow .15s;
+        }
+        .search-wrap input:focus {
+            outline: none; border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+        }
+        .filters-row select {
+            padding: 8px 11px; border: 1px solid #d1d5db; border-radius: 7px;
+            font-size: 13px; color: #374151; background: white;
+            font-family: inherit; cursor: pointer;
+            transition: border-color .15s, box-shadow .15s; width: 145px;
+        }
+        .filters-row select:focus {
+            outline: none; border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+        }
+        .filters-spacer { flex: 1; }
+
+        /* ── Table wrapper — scrollable with sticky header ── */
+        .tbl-wrap {
+            background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,.04);
+        }
+        .tbl-scroll {
+            overflow-x: hidden;
+            overflow-y: auto;
+            max-height: calc(100vh - 230px);
+            min-height: 200px;
+        }
+
+        table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-size: 12.5px;
+        }
+
+        thead th {
+            position: sticky; top: 0; z-index: 3;
+            padding: 10px 14px;
+            text-align: left; font-size: 10.5px; font-weight: 600;
+            color: #475569; text-transform: uppercase; letter-spacing: .55px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer; user-select: none;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            transition: background .15s;
+        }
+        thead th:hover { background: #e8edf5; color: #0f172a; }
+        thead th.sort-asc::after  { content: ' ↑'; color: #2563eb; font-size: 11px; }
+        thead th.sort-desc::after { content: ' ↓'; color: #2563eb; font-size: 11px; }
+        thead th.sorted { color: #2563eb; background: #eff6ff; }
+
+        td {
+            padding: 10px 14px; border-bottom: 1px solid #f1f5f9;
+            color: #334155; vertical-align: middle;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:nth-child(even) td { background: #fafbfc; }
+        tbody tr:hover td {
+            background: #eff6ff !important;
+        }
+
+        /* ── Badges ── */
+        .badge {
+            display: inline-flex; align-items: center;
+            padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500;
+            white-space: nowrap; letter-spacing: .1px;
+        }
+        .b-active { background: #dcfce7; color: #15803d; }
+        .b-hold   { background: #fef3c7; color: #b45309; }
+
+        /* Per-source badge colors */
+        .b-src-core     { background: #dbeafe; color: #1e40af; }
+        .b-src-project  { background: #d1fae5; color: #065f46; }
+        .b-src-cf       { background: #ede9fe; color: #5b21b6; }
+        .b-src-hk       { background: #ffedd5; color: #9a3412; }
+        .b-src-retainer { background: #cffafe; color: #155e75; }
+        .b-src-school   { background: #fce7f3; color: #9d174d; }
+        .b-src-college  { background: #fee2e2; color: #991b1b; }
+        .b-src-manual   { background: #f3f4f6; color: #374151; }
+
+        .b-also { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+
+        /* LOP value highlight */
+        .lop-badge {
+            display: inline-block;
+            background: #fef3c7; color: #b45309;
+            padding: 2px 9px; border-radius: 12px;
+            font-size: 12px; font-weight: 600;
+            border: 1px solid #fde68a;
+        }
+
+        .no-results {
+            padding: 56px 24px; text-align: center; color: #94a3b8;
+            font-size: 14px; line-height: 1.6;
+        }
+        .no-results-icon { font-size: 36px; margin-bottom: 10px; opacity: .5; }
+
+        /* Table footer */
+        .tbl-footer {
+            padding: 10px 16px; border-top: 1px solid #f1f5f9;
+            font-size: 11.5px; color: #64748b;
+            display: flex; align-items: center; justify-content: space-between;
+            background: #fafbfc;
+        }
+
+        /* ── Exports ── */
+        .exports-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .export-card {
+            background: white; border: 1px solid #e2e8f0;
+            border-radius: 12px; padding: 24px 26px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.04);
+        }
+        .export-card-icon {
+            width: 40px; height: 40px; border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; margin-bottom: 14px;
+        }
+        .export-card h3 { font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 6px; }
+        .export-card p  { font-size: 12px; color: #64748b; margin-bottom: 20px; line-height: 1.6; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block; font-size: 11px; font-weight: 600;
+            color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px;
+        }
+        .form-group input {
+            width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 7px;
+            font-size: 13px; color: #0f172a; font-family: inherit;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .form-group input:focus {
+            outline: none; border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+        }
+
+        .export-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+        .status-msg  { margin-top: 12px; font-size: 12px; min-height: 18px; font-weight: 500; }
+        .status-msg.ok  { color: #16a34a; }
+        .status-msg.err { color: #dc2626; }
+
+        /* ── Loading overlay ── */
+        .loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,.55);
+            backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; z-index: 999;
+        }
+        .loading-overlay.show { display: flex; }
+        .spinner-card {
+            background: white; border-radius: 16px; padding: 36px 48px;
+            text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,.22);
+        }
+        .spinner {
+            width: 42px; height: 42px; border: 3px solid #e2e8f0;
+            border-top-color: #2563eb; border-radius: 50%;
+            animation: spin .85s linear infinite; margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner-card p { font-size: 13px; color: #475569; font-weight: 500; }
+
+        /* ── Error box ── */
+        .err-box {
+            background: #fee2e2; border: 1px solid #fecaca; border-left: 4px solid #dc2626;
+            border-radius: 8px; padding: 12px 16px;
+            font-size: 13px; color: #991b1b; margin-bottom: 14px; line-height: 1.5;
+        }
+
+        .hidden { display: none !important; }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,.5);
+            backdrop-filter: blur(3px);
+            display: flex; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-dialog {
+            background: white; border-radius: 14px; width: 540px; max-width: 96vw;
+            box-shadow: 0 24px 72px rgba(0,0,0,.22); overflow: hidden;
+        }
+        .modal-header {
+            padding: 18px 24px 16px; border-bottom: 1px solid #f1f5f9;
+            display: flex; align-items: center; justify-content: space-between;
+            background: #fafbfc;
+        }
+        .modal-header span { font-size: 14px; font-weight: 600; color: #0f172a; }
+        .modal-close {
+            background: none; border: none; font-size: 20px; cursor: pointer;
+            color: #94a3b8; line-height: 1; padding: 2px 6px; border-radius: 5px;
+            transition: color .15s, background .15s;
+        }
+        .modal-close:hover { color: #0f172a; background: #f1f5f9; }
+        .modal-body   { padding: 22px 24px; }
+        .modal-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .modal-grid .full { grid-column: 1 / -1; }
+        .modal-footer {
+            padding: 14px 24px; border-top: 1px solid #f1f5f9;
+            display: flex; justify-content: flex-end; gap: 10px; background: #fafbfc;
+        }
+        .modal-err { font-size: 12px; color: #dc2626; margin-top: 8px; min-height: 18px; font-weight: 500; }
+        input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; }
+
+        /* ── Row action buttons (Edit / Delete) ── */
+        .edit-btn, .del-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 5px 7px; border-radius: 5px;
+            font-size: 14px; line-height: 1;
+            transition: color .15s, background .15s;
+            flex-shrink: 0;
+        }
+        .edit-btn { color: #94a3b8; }
+        .edit-btn:hover { color: #2563eb; background: #eff6ff; }
+        .del-btn  { color: #94a3b8; }
+        .del-btn:hover  { color: #dc2626; background: #fee2e2; }
+        .row-actions { display: flex; gap: 4px; align-items: center; }
+        /* Actions column — never clip the buttons */
+        td.actions-cell { overflow: visible; padding: 6px 8px; }
+
+        /* ── Process btn row ── */
+        .process-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 12px; margin-top: 6px; padding-top: 4px;
+        }
+
+        /* ── Section divider ── */
+        .section-sep {
+            height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 20px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .upload-grid   { grid-template-columns: repeat(2,1fr); }
+            .upload-grid-3 { grid-template-columns: repeat(2,1fr); max-width: none; }
+            .exports-grid  { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .upload-grid   { grid-template-columns: 1fr; }
+            .upload-grid-3 { grid-template-columns: 1fr; max-width: none; }
+            .stats-grid    { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════ -->
+<header class="app-header">
+    <div class="header-brand">
+        <div class="header-icon">👥</div>
+        <div>
+            <h1>Employee Data Consolidation</h1>
+            <p>Payroll data processor — upload 7 Excel sheets to begin</p>
+        </div>
+    </div>
+</header>
+
+<div class="tabs-bar">
+    <button class="tab active" id="tab-upload"       onclick="switchTab('upload')">Upload &amp; Process</button>
+    <button class="tab"        id="tab-consolidated" onclick="switchTab('consolidated')">Consolidated View</button>
+    <button class="tab"        id="tab-exports"      onclick="switchTab('exports')" disabled>Exports</button>
+</div>
+
+<div class="page">
+
+<!-- ═══════════════════════════════════════════
+     TAB 1 — UPLOAD & PROCESS
+═══════════════════════════════════════════ -->
+<div id="panel-upload" class="tab-panel active">
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Upload salary sheets</div>
+                <div class="card-sub">Select all 7 Excel files for the month, then click Process</div>
+            </div>
+        </div>
+
+        <div class="upload-grid">
+            <div class="upload-tile" id="card-core">
+                <div class="tile-label"><span class="tick">✓</span> Core Staff</div>
+                <input type="file" id="file-core" accept=".xlsx,.xls" onchange="handleFile(this,'core')">
+                <div class="fname" id="fname-core"></div>
+            </div>
+            <div class="upload-tile" id="card-project">
+                <div class="tile-label"><span class="tick">✓</span> Project Staff</div>
+                <input type="file" id="file-project" accept=".xlsx,.xls" onchange="handleFile(this,'project')">
+                <div class="fname" id="fname-project"></div>
+            </div>
+            <div class="upload-tile" id="card-cf">
+                <div class="tile-label"><span class="tick">✓</span> Community Facilitator</div>
+                <input type="file" id="file-cf" accept=".xlsx,.xls" onchange="handleFile(this,'cf')">
+                <div class="fname" id="fname-cf"></div>
+            </div>
+            <div class="upload-tile" id="card-hk">
+                <div class="tile-label"><span class="tick">✓</span> Housekeeping</div>
+                <input type="file" id="file-hk" accept=".xlsx,.xls" onchange="handleFile(this,'hk')">
+                <div class="fname" id="fname-hk"></div>
+            </div>
+        </div>
+
+        <div class="upload-grid-3">
+            <div class="upload-tile" id="card-retainer">
+                <div class="tile-label"><span class="tick">✓</span> Retainer</div>
+                <input type="file" id="file-retainer" accept=".xlsx,.xls" onchange="handleFile(this,'retainer')">
+                <div class="fname" id="fname-retainer"></div>
+            </div>
+            <div class="upload-tile" id="card-school">
+                <div class="tile-label"><span class="tick">✓</span> School</div>
+                <input type="file" id="file-school" accept=".xlsx,.xls" onchange="handleFile(this,'school')">
+                <div class="fname" id="fname-school"></div>
+            </div>
+            <div class="upload-tile" id="card-college">
+                <div class="tile-label"><span class="tick">✓</span> College</div>
+                <input type="file" id="file-college" accept=".xlsx,.xls" onchange="handleFile(this,'college')">
+                <div class="fname" id="fname-college"></div>
+            </div>
+        </div>
+
+        <div class="process-row">
+            <button class="btn btn-green" id="processBtn" style="padding:10px 32px;font-size:14px;">
+                 Process Files
+            </button>
+        </div>
+    </div>
+
+    <div id="errBox" class="err-box hidden"></div>
+
+    <!-- Stats after processing -->
+    <div id="statsSection" class="hidden">
+        <div class="stats-grid" style="margin-top:20px;">
+            <div class="stat-tile">
+                <div class="stat-icon total">👤</div>
+                <div class="stat-body">
+                    <div class="stat-num total" id="stat-total">—</div>
+                    <div class="stat-label">Total Employees</div>
+                </div>
+            </div>
+            <div class="stat-tile">
+                <div class="stat-icon active">✅</div>
+                <div class="stat-body">
+                    <div class="stat-num active" id="stat-active">—</div>
+                    <div class="stat-label">Active</div>
+                </div>
+            </div>
+            <div class="stat-tile">
+                <div class="stat-icon hold">⏸</div>
+                <div class="stat-body">
+                    <div class="stat-num hold" id="stat-hold">—</div>
+                    <div class="stat-label">Hold</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Duplicate alert -->
+        <div id="dupSection" class="dup-alert hidden">
+            <div class="dup-title">⚠ <span id="dupCount">0</span> employees appear in more than one sheet</div>
+            <div class="dup-sub">These are counted once. The "Also In" column in the table shows where duplicates were found.</div>
+            <div class="dup-pills" id="dupList"></div>
+        </div>
+    </div>
+
+</div><!-- /panel-upload -->
+
+
+<!-- ═══════════════════════════════════════════
+     TAB 2 — CONSOLIDATED VIEW
+═══════════════════════════════════════════ -->
+<div id="panel-consolidated" class="tab-panel">
+
+    <div id="restoredBar" class="restored-bar hidden">
+        <span id="restoredMsg"></span>
+        <a href="#" id="clearFreshBtn">Clear &amp; start fresh</a>
+    </div>
+
+    <div class="filters-row">
+        <!-- Search -->
+        <div class="search-wrap">
+            <span class="s-icon">🔍</span>
+            <input type="text" id="searchBox" placeholder="Search by Emp ID or name…" oninput="applyFilters()">
+        </div>
+
+        <select id="statusFilter" onchange="applyFilters()">
+            <option value="">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Hold">Hold</option>
+        </select>
+
+        <select id="sourceFilter" onchange="applyFilters()">
+            <option value="">All Sources</option>
+            <option value="Core">Core</option>
+            <option value="Project">Project</option>
+            <option value="CF">CF</option>
+            <option value="HK">HK</option>
+            <option value="Retainer">Retainer</option>
+            <option value="School">School</option>
+            <option value="College">College</option>
+        </select>
+
+        <select id="lopFilter" onchange="applyFilters()">
+            <option value="">All LOP</option>
+            <option value="withlop">With LOP (&gt; 0)</option>
+        </select>
+
+        <div class="filters-spacer"></div>
+        <button class="btn btn-ghost" onclick="openAddModal()">+ Add Employee</button>
+        <button class="btn btn-blue"  id="downloadBtn">Download as Excel</button>
+    </div>
+
+    <div class="tbl-wrap">
+        <div class="tbl-scroll">
+            <table>
+                <colgroup>
+                    <col style="width:7%">   <!-- Emp ID -->
+                    <col style="width:11%">  <!-- Emp Name -->
+                    <col style="width:8%">   <!-- Date of Joining -->
+                    <col style="width:6%">   <!-- Status -->
+                    <col style="width:5%">   <!-- LOP -->
+                    <col style="width:8%">   <!-- Last Working Day -->
+                    <col style="width:14%">  <!-- Project / Dept -->
+                    <col style="width:10%">  <!-- Centre -->
+                    <col style="width:11%">  <!-- Designation -->
+                    <col style="width:9%">   <!-- Remarks -->
+                    <col style="width:6%">   <!-- Source -->
+                    <col style="width:4%">   <!-- Also In -->
+                    <col style="width:5%">   <!-- Actions -->
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th data-col="emp_id"      onclick="sortBy('emp_id')">Emp ID</th>
+                        <th data-col="emp_name"    onclick="sortBy('emp_name')">Emp Name</th>
+                        <th data-col="doj"         onclick="sortBy('doj')">Date of Joining</th>
+                        <th data-col="status"      onclick="sortBy('status')">Status</th>
+                        <th data-col="lop"         onclick="sortBy('lop')">LOP</th>
+                        <th data-col="lwd"         onclick="sortBy('lwd')">Last Working Day</th>
+                        <th data-col="project"     onclick="sortBy('project')">Project / Dept</th>
+                        <th data-col="centre"      onclick="sortBy('centre')">Centre</th>
+                        <th data-col="designation" onclick="sortBy('designation')">Designation</th>
+                        <th>Remarks</th>
+                        <th data-col="source"      onclick="sortBy('source')">Source</th>
+                        <th>Also In</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div id="noResults" class="no-results hidden">
+            <div class="no-results-icon">🔍</div>
+            No employees found matching the filters.
+        </div>
+        <div class="tbl-footer" id="tblFooter" style="display:none;">
+            <span id="tblCount"></span>
+        </div>
+    </div>
+
+</div><!-- /panel-consolidated -->
+
+
+<!-- ═══════════════════════════════════════════
+     TAB 3 — EXPORTS
+═══════════════════════════════════════════ -->
+<div id="panel-exports" class="tab-panel">
+    <div class="exports-grid">
+
+        <!-- LOP Export -->
+        <div class="export-card">
+            <div class="export-card-icon" style="background:#f0fdf4;">📊</div>
+            <h3>LOP Export</h3>
+            <p>Generate CSV files for employees with loss-of-pay days greater than zero. On-roll covers Core, Project, HK and CF. Off-roll covers Retainer, School and College.</p>
+
+            <div class="form-group">
+                <label>LOP Period (YYYY-MM)</label>
+                <input type="text" id="lopPeriod" placeholder="e.g. 2026-03"
+                       oninput="updateStored('lopPeriod', this.value)">
+            </div>
+            <div class="form-group">
+                <label>Payout Period (YYYY-MM)</label>
+                <input type="text" id="payoutPeriod" placeholder="e.g. 2026-03"
+                       oninput="updateStored('payoutPeriod', this.value)">
+            </div>
+            <div class="export-btns">
+                <button class="btn btn-green"  id="lopOnrollBtn"  onclick="downloadLop('onroll')"  disabled>Download On-roll CSV</button>
+                <button class="btn btn-indigo" id="lopOffrollBtn" onclick="downloadLop('offroll')" disabled>Download Off-roll CSV</button>
+            </div>
+            <div class="status-msg" id="lopStatus"></div>
+        </div>
+
+        <!-- New Joinee Export -->
+        <div class="export-card">
+            <div class="export-card-icon" style="background:#eff6ff;">🆕</div>
+            <h3>New Joinee Export</h3>
+            <p>Generate a formatted Excel file with DRF Care Fund data for all new joinees across all sheets. The amount is calculated based on the financial year month of joining.</p>
+
+            <div class="form-group">
+                <label>Processing Month (YYYY-MM)</label>
+                <input type="text" id="processingMonth" placeholder="e.g. 2026-03"
+                       oninput="updateStored('processingMonth', this.value)">
+            </div>
+            <div class="export-btns">
+                <button class="btn btn-blue" id="newJoineeBtn" onclick="downloadNewJoinee()" disabled>Download New Joinee Excel</button>
+            </div>
+            <div class="status-msg" id="newJoineeStatus"></div>
+        </div>
+
+    </div>
+</div><!-- /panel-exports -->
+
+</div><!-- /page -->
+
+
+<!-- ═══════════════════════════════════════════
+     ADD / EDIT EMPLOYEE MODAL
+═══════════════════════════════════════════ -->
+<div id="addModal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <span id="m-modal-title">Add Employee Manually</span>
+            <button class="modal-close" onclick="closeAddModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-grid">
+                <div class="form-group">
+                    <label>Emp ID *</label>
+                    <input type="text" id="m-emp-id" placeholder="e.g. DRF0001">
+                </div>
+                <div class="form-group">
+                    <label>Emp Name *</label>
+                    <input type="text" id="m-emp-name" placeholder="Full name">
+                </div>
+                <div class="form-group">
+                    <label>Date of Joining (DD-MM-YYYY)</label>
+                    <input type="text" id="m-doj" placeholder="e.g. 01-04-2024">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="m-status" style="width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;">
+                        <option value="Active">Active</option>
+                        <option value="Hold">Hold</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>LOP Days</label>
+                    <input type="number" id="m-lop" placeholder="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Last Working Day (DD-MM-YYYY)</label>
+                    <input type="text" id="m-lwd" placeholder="e.g. 31-03-2026">
+                </div>
+                <div class="form-group">
+                    <label>Source Sheet</label>
+                    <select id="m-source" style="width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;">
+                        <option value="Manual">Manual</option>
+                        <option value="Core">Core</option>
+                        <option value="Project">Project</option>
+                        <option value="CF">CF</option>
+                        <option value="HK">HK</option>
+                        <option value="Retainer">Retainer</option>
+                        <option value="School">School</option>
+                        <option value="College">College</option>
+                    </select>
+                </div>
+                <div class="form-group full">
+                    <label>Remarks</label>
+                    <input type="text" id="m-remarks" placeholder="Optional remarks">
+                </div>
+            </div>
+            <div class="modal-err" id="m-err"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+            <button class="btn btn-blue" id="m-submit-btn" onclick="submitAddEmployee()">Add Employee</button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+    <div class="spinner-card">
+        <div class="spinner"></div>
+        <p>Processing files, please wait…</p>
+    </div>
+</div>
+
+
+<script>
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+let allEmployees      = [];
+let filteredEmployees = [];
+let sortCol           = 'emp_id';
+let sortDir           = 'asc';
+let editingEmpId      = null;
+
+const SESSION_KEY = 'emp_session_token';
+const DATA_KEY    = 'emp_data_v1';
+const TOKEN_KEY   = 'emp_token_v1';
+
+// Per-source badge class map
+const SRC_CLASS = {
+    'Core':     'b-src-core',
+    'Project':  'b-src-project',
+    'CF':       'b-src-cf',
+    'HK':       'b-src-hk',
+    'Retainer': 'b-src-retainer',
+    'School':   'b-src-school',
+    'College':  'b-src-college',
+    'Manual':   'b-src-manual',
+};
+function srcClass(s) { return SRC_CLASS[s] || 'b-src-manual'; }
+
+// ─────────────────────────────────────────────
+//  Session persistence — run on page load
+// ─────────────────────────────────────────────
+(function init() {
+    const sToken = sessionStorage.getItem(SESSION_KEY);
+    const lToken = localStorage.getItem(TOKEN_KEY);
+    if (sToken && sToken === lToken) {
+        restoreFromStorage();
+    } else {
+        localStorage.removeItem(DATA_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        switchTab('upload');
+    }
+})();
+
+function saveToStorage(employees, stats) {
+    const token = Date.now().toString();
+    sessionStorage.setItem(SESSION_KEY, token);
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(DATA_KEY, JSON.stringify({
+        employees,
+        stats,
+        processedAt:     new Date().toISOString(),
+        lopPeriod:       '',
+        payoutPeriod:    '',
+        processingMonth: ''
+    }));
+}
+
+function updateStored(field, value) {
+    const raw = localStorage.getItem(DATA_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    obj[field] = value;
+    localStorage.setItem(DATA_KEY, JSON.stringify(obj));
+}
+
+function restoreFromStorage() {
+    const raw = localStorage.getItem(DATA_KEY);
+    if (!raw) { switchTab('upload'); return; }
+    const saved = JSON.parse(raw);
+
+    allEmployees      = saved.employees || [];
+    filteredEmployees = [...allEmployees];
+
+    renderStats(saved.stats);
+    const dups = allEmployees.filter(e => e.also_in);
+    if (dups.length) renderDuplicates(dups);
+    renderTable();
+
+    if (saved.lopPeriod)       document.getElementById('lopPeriod').value       = saved.lopPeriod;
+    if (saved.payoutPeriod)    document.getElementById('payoutPeriod').value    = saved.payoutPeriod;
+    if (saved.processingMonth) document.getElementById('processingMonth').value = saved.processingMonth;
+
+    enableExports();
+    showRestoredBar(saved.processedAt);
+    switchTab('consolidated');
+}
+
+function clearAndRefresh() {
+    localStorage.removeItem(DATA_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    location.reload();
+}
+
+document.getElementById('clearFreshBtn').addEventListener('click', function(e) {
+    e.preventDefault(); clearAndRefresh();
+});
+
+function showRestoredBar(iso) {
+    const bar = document.getElementById('restoredBar');
+    const msg = document.getElementById('restoredMsg');
+    const d   = new Date(iso).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+    msg.textContent = `🕐 Restored from last session — processed ${d}`;
+    bar.classList.remove('hidden');
+}
+
+// ─────────────────────────────────────────────
+//  Tab switching
+// ─────────────────────────────────────────────
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+//  File upload handling
+// ─────────────────────────────────────────────
+function handleFile(input, key) {
+    const tile  = document.getElementById('card-' + key);
+    const fname = document.getElementById('fname-' + key);
+    if (input.files && input.files[0]) {
+        tile.classList.add('done');
+        fname.textContent = input.files[0].name;
+    } else {
+        tile.classList.remove('done');
+        fname.textContent = '';
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Process files
+// ─────────────────────────────────────────────
+document.getElementById('processBtn').addEventListener('click', async () => {
+    const loading = document.getElementById('loading');
+    const errBox  = document.getElementById('errBox');
+    errBox.classList.add('hidden');
+
+    const fd   = new FormData();
+    const keys = ['core','project','cf','hk','retainer','school','college'];
+    let hasAny = false;
+    keys.forEach(k => {
+        const fi = document.getElementById('file-' + k);
+        if (fi.files[0]) { fd.append(k, fi.files[0]); hasAny = true; }
+    });
+
+    if (!hasAny) {
+        errBox.textContent = 'Please select at least one file before processing.';
+        errBox.classList.remove('hidden');
+        return;
+    }
+
+    loading.classList.add('show');
+
+    try {
+        const res  = await fetch('/process', { method: 'POST', body: fd });
+        const data = await res.json();
+        loading.classList.remove('show');
+
+        if (data.errors && data.errors.length && !data.employees) {
+            errBox.textContent = data.errors.join(' | ');
+            errBox.classList.remove('hidden');
+            return;
+        }
+
+        allEmployees      = data.employees || [];
+        filteredEmployees = [...allEmployees];
+
+        const stats = {
+            total:  data.stats.total,
+            active: data.stats.active,
+            hold:   data.stats.hold
+        };
+
+        renderStats(stats);
+        clearDuplicates();
+        const dups = allEmployees.filter(e => e.also_in);
+        if (dups.length) renderDuplicates(dups);
+
+        document.getElementById('statsSection').classList.remove('hidden');
+        renderTable();
+        enableExports();
+        saveToStorage(allEmployees, stats);
+        switchTab('consolidated');
+
+    } catch (err) {
+        loading.classList.remove('show');
+        errBox.textContent = 'Error: ' + err.message;
+        errBox.classList.remove('hidden');
+    }
+});
+
+// ─────────────────────────────────────────────
+//  Render helpers
+// ─────────────────────────────────────────────
+function renderStats(s) {
+    document.getElementById('stat-total').textContent  = s.total.toLocaleString();
+    document.getElementById('stat-active').textContent = s.active.toLocaleString();
+    document.getElementById('stat-hold').textContent   = s.hold.toLocaleString();
+    document.getElementById('statsSection').classList.remove('hidden');
+}
+
+function clearDuplicates() {
+    document.getElementById('dupSection').classList.add('hidden');
+    document.getElementById('dupCount').textContent = '0';
+    document.getElementById('dupList').innerHTML    = '';
+}
+
+function renderDuplicates(dups) {
+    document.getElementById('dupCount').textContent = dups.length;
+    document.getElementById('dupList').innerHTML    = dups
+        .map(e => {
+            const sheets = e.source + ' → ' + e.also_in;
+            return `<span class="dup-pill" title="${esc(sheets)}">${esc(e.emp_id)} <span class="dup-pill-src">(${esc(sheets)})</span></span>`;
+        }).join('');
+    document.getElementById('dupSection').classList.remove('hidden');
+}
+
+function enableExports() {
+    document.getElementById('tab-exports').disabled    = false;
+    document.getElementById('lopOnrollBtn').disabled   = false;
+    document.getElementById('lopOffrollBtn').disabled  = false;
+    document.getElementById('newJoineeBtn').disabled   = false;
+}
+
+function renderTable() {
+    const tbody     = document.getElementById('tableBody');
+    const noResults = document.getElementById('noResults');
+    const footer    = document.getElementById('tblFooter');
+    const tblCount  = document.getElementById('tblCount');
+
+    // Update download button label
+    const dlBtn = document.getElementById('downloadBtn');
+    if (dlBtn) {
+        const fc = filteredEmployees.length, tc = allEmployees.length;
+        dlBtn.textContent = fc === tc
+            ? `⬇ Download as Excel (${fc})`
+            : `⬇ Download Filtered (${fc} of ${tc})`;
+    }
+
+    // Update sort header classes
+    document.querySelectorAll('thead th[data-col]').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc', 'sorted');
+        if (th.dataset.col === sortCol) {
+            th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc', 'sorted');
+        }
+    });
+
+    if (!filteredEmployees.length) {
+        tbody.innerHTML = '';
+        noResults.classList.remove('hidden');
+        footer.style.display = 'none';
+        return;
+    }
+    noResults.classList.add('hidden');
+    footer.style.display = 'flex';
+
+    const fc = filteredEmployees.length, tc = allEmployees.length;
+    tblCount.textContent = fc === tc
+        ? `${fc} employee${fc !== 1 ? 's' : ''}`
+        : `Showing ${fc} of ${tc} employees`;
+
+    tbody.innerHTML = filteredEmployees.map(e => {
+        const alsoIn = (e.also_in || '').split(',')
+            .map(s => s.trim()).filter(Boolean)
+            .map(s => `<span class="badge b-also">${esc(s)}</span>`).join(' ');
+
+        const lopVal = parseFloat(e.lop) || 0;
+        const lopCell = lopVal > 0
+            ? `<span class="lop-badge">${esc(e.lop)}</span>`
+            : `<span style="color:#94a3b8;">—</span>`;
+
+        const dash = '<span style="color:#cbd5e1;">—</span>';
+        return `<tr>
+            <td title="${esc(e.emp_id)}"   style="font-weight:600;color:#0f172a;letter-spacing:-.2px;">${esc(e.emp_id)}</td>
+            <td title="${esc(e.emp_name)}" style="font-weight:500;">${esc(e.emp_name)}</td>
+            <td style="color:#64748b;">${esc(e.doj) || dash}</td>
+            <td><span class="badge ${e.status === 'Active' ? 'b-active' : 'b-hold'}">${esc(e.status)}</span></td>
+            <td>${lopCell}</td>
+            <td style="color:#64748b;">${esc(e.lwd || '') || dash}</td>
+            <td title="${esc(e.project||'')}">${esc(e.project || '') || dash}</td>
+            <td title="${esc(e.centre||'')}">${esc(e.centre || '') || dash}</td>
+            <td title="${esc(e.designation||'')}">${esc(e.designation || '') || dash}</td>
+            <td title="${esc(e.remarks||'')}" style="color:#64748b;">${esc(e.remarks || '') || dash}</td>
+            <td><span class="badge ${srcClass(e.source)}">${esc(e.source)}</span></td>
+            <td>${alsoIn || dash}</td>
+            <td class="actions-cell"><div class="row-actions">
+                <button class="edit-btn" title="Edit employee"   onclick="openEditModal('${esc(e.emp_id)}')">✏</button>
+                <button class="del-btn"  title="Delete employee" onclick="deleteEmployee('${esc(e.emp_id)}')">🗑</button>
+            </div></td>
+        </tr>`;
+    }).join('');
+}
+
+function esc(text) {
+    if (!text) return '';
+    const d = document.createElement('div');
+    d.textContent = String(text);
+    return d.innerHTML;
+}
+
+// ─────────────────────────────────────────────
+//  Filter & sort
+// ─────────────────────────────────────────────
+function applyFilters() {
+    const search    = document.getElementById('searchBox').value.toLowerCase();
+    const status    = document.getElementById('statusFilter').value;
+    const source    = document.getElementById('sourceFilter').value;
+    const lopFilter = document.getElementById('lopFilter').value;
+
+    filteredEmployees = allEmployees.filter(e => {
+        const matchSearch = !search ||
+            (e.emp_id   && e.emp_id.toLowerCase().includes(search)) ||
+            (e.emp_name && e.emp_name.toLowerCase().includes(search));
+        const lopVal   = parseFloat(e.lop) || 0;
+        const matchLop = !lopFilter || (lopFilter === 'withlop' && lopVal > 0);
+        return matchSearch &&
+            (!status || e.status === status) &&
+            (!source || e.source === source) &&
+            matchLop;
+    });
+    renderTable();
+}
+
+function sortBy(col) {
+    if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortCol = col; sortDir = 'asc'; }
+    filteredEmployees.sort((a, b) => {
+        let av = (a[col] || '').toLowerCase();
+        let bv = (b[col] || '').toLowerCase();
+        if (av < bv) return sortDir === 'asc' ? -1 : 1;
+        if (av > bv) return sortDir === 'asc' ?  1 : -1;
+        return 0;
+    });
+    renderTable();
+}
+
+// ─────────────────────────────────────────────
+//  Download as Excel
+// ─────────────────────────────────────────────
+document.getElementById('downloadBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('downloadBtn');
+    const prevText = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Downloading…';
+    try {
+        const res = await fetch('/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employees: filteredEmployees })
+        });
+        if (!res.ok) throw new Error('Server error ' + res.status);
+        const blob = await res.blob();
+        triggerDownload(blob, 'Employee_Consolidated.xlsx');
+    } catch (err) {
+        alert('Download failed: ' + err.message);
+    } finally {
+        btn.disabled = false; btn.textContent = prevText;
+    }
+});
+
+// ─────────────────────────────────────────────
+//  LOP CSV download
+// ─────────────────────────────────────────────
+async function downloadLop(type) {
+    const lop     = document.getElementById('lopPeriod').value.trim();
+    const payout  = document.getElementById('payoutPeriod').value.trim();
+    const statusD = document.getElementById('lopStatus');
+    const btn     = document.getElementById(type === 'onroll' ? 'lopOnrollBtn' : 'lopOffrollBtn');
+    const label   = type === 'onroll' ? 'On-roll' : 'Off-roll';
+
+    statusD.className = 'status-msg';
+    if (!lop || !payout) {
+        statusD.textContent = 'Both LOP Period and Payout Period are required.';
+        statusD.classList.add('err'); return;
+    }
+    if (!/^\d{4}-\d{2}$/.test(lop) || !/^\d{4}-\d{2}$/.test(payout)) {
+        statusD.textContent = 'Format must be YYYY-MM (e.g. 2026-03).';
+        statusD.classList.add('err'); return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Downloading…';
+    statusD.textContent = `Generating ${label} CSV…`;
+
+    try {
+        const res = await fetch('/download_lop_csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, lop_period: lop, payout_period: payout })
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Server error'); }
+        const blob  = await res.blob();
+        const fname = type === 'onroll' ? `LOP_Onroll_${payout}.csv` : `LOP_Offroll_${payout}.csv`;
+        triggerDownload(blob, fname);
+        statusD.textContent = `✓ Downloaded ${fname}`;
+        statusD.classList.add('ok');
+    } catch (err) {
+        statusD.textContent = 'Error: ' + err.message;
+        statusD.classList.add('err');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = type === 'onroll' ? 'Download On-roll CSV' : 'Download Off-roll CSV';
+    }
+}
+
+// ─────────────────────────────────────────────
+//  New Joinee Excel download
+// ─────────────────────────────────────────────
+async function downloadNewJoinee() {
+    const month   = document.getElementById('processingMonth').value.trim();
+    const statusD = document.getElementById('newJoineeStatus');
+    const btn     = document.getElementById('newJoineeBtn');
+
+    statusD.className = 'status-msg';
+    if (!month) {
+        statusD.textContent = 'Processing Month is required.';
+        statusD.classList.add('err'); return;
+    }
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+        statusD.textContent = 'Format must be YYYY-MM (e.g. 2026-03).';
+        statusD.classList.add('err'); return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Downloading…';
+    statusD.textContent = 'Generating New Joinee Excel…';
+
+    try {
+        const res = await fetch('/download_new_joinee_excel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ processing_month: month })
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Server error'); }
+        const blob  = await res.blob();
+        const fname = `NewJoinee_${month.replace('-','')}.xlsx`;
+        triggerDownload(blob, fname);
+        statusD.textContent = `✓ Downloaded ${fname}`;
+        statusD.classList.add('ok');
+    } catch (err) {
+        statusD.textContent = 'Error: ' + err.message;
+        statusD.classList.add('err');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download New Joinee Excel';
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Add / Edit Employee Modal
+// ─────────────────────────────────────────────
+function openAddModal() {
+    editingEmpId = null;
+    ['m-emp-id','m-emp-name','m-doj','m-lop','m-lwd','m-remarks'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('m-emp-id').readOnly = false;
+    document.getElementById('m-status').value = 'Active';
+    document.getElementById('m-source').value = 'Manual';
+    document.getElementById('m-err').textContent = '';
+    document.getElementById('m-modal-title').textContent = 'Add Employee Manually';
+    document.getElementById('m-submit-btn').textContent  = 'Add Employee';
+    document.getElementById('addModal').classList.remove('hidden');
+    document.getElementById('m-emp-id').focus();
+}
+
+function openEditModal(empId) {
+    const emp = allEmployees.find(e => e.emp_id === empId);
+    if (!emp) return;
+    editingEmpId = empId;
+    document.getElementById('m-emp-id').value    = emp.emp_id;
+    document.getElementById('m-emp-id').readOnly = true;
+    document.getElementById('m-emp-name').value  = emp.emp_name  || '';
+    document.getElementById('m-doj').value        = emp.doj       || '';
+    document.getElementById('m-status').value     = emp.status    || 'Active';
+    document.getElementById('m-lop').value        = emp.lop       || '';
+    document.getElementById('m-lwd').value        = emp.lwd       || '';
+    document.getElementById('m-remarks').value    = emp.remarks   || '';
+    document.getElementById('m-source').value     = emp.source    || 'Manual';
+    document.getElementById('m-err').textContent  = '';
+    document.getElementById('m-modal-title').textContent = 'Edit Employee — ' + empId;
+    document.getElementById('m-submit-btn').textContent  = 'Save Changes';
+    document.getElementById('addModal').classList.remove('hidden');
+    document.getElementById('m-emp-name').focus();
+}
+
+function closeAddModal() {
+    document.getElementById('addModal').classList.add('hidden');
+    editingEmpId = null;
+}
+
+function submitAddEmployee() {
+    const errEl   = document.getElementById('m-err');
+    errEl.textContent = '';
+
+    const empId   = document.getElementById('m-emp-id').value.trim();
+    const empName = document.getElementById('m-emp-name').value.trim();
+    if (!empId)   { errEl.textContent = 'Emp ID is required.';   return; }
+    if (!empName) { errEl.textContent = 'Emp Name is required.'; return; }
+
+    const fields = {
+        emp_id:   empId,
+        emp_name: empName,
+        doj:      document.getElementById('m-doj').value.trim(),
+        status:   document.getElementById('m-status').value,
+        lop:      document.getElementById('m-lop').value.trim() || '',
+        lwd:      document.getElementById('m-lwd').value.trim(),
+        remarks:  document.getElementById('m-remarks').value.trim(),
+        source:   document.getElementById('m-source').value,
+    };
+
+    if (editingEmpId) {
+        const idx = allEmployees.findIndex(e => e.emp_id === editingEmpId);
+        if (idx !== -1) {
+            allEmployees[idx] = { ...allEmployees[idx], ...fields };
+        }
+    } else {
+        if (allEmployees.find(e => e.emp_id === empId)) {
+            errEl.textContent = `Emp ID "${empId}" already exists.`; return;
+        }
+        allEmployees.push({ ...fields, also_in: '' });
+    }
+
+    const raw = localStorage.getItem(DATA_KEY);
+    if (raw) {
+        const obj = JSON.parse(raw);
+        obj.employees    = allEmployees;
+        obj.stats.total  = allEmployees.length;
+        obj.stats.active = allEmployees.filter(e => e.status === 'Active').length;
+        obj.stats.hold   = allEmployees.filter(e => e.status === 'Hold').length;
+        localStorage.setItem(DATA_KEY, JSON.stringify(obj));
+        renderStats(obj.stats);
+    }
+
+    applyFilters();
+    closeAddModal();
+}
+
+// ─────────────────────────────────────────────
+//  Delete Employee
+// ─────────────────────────────────────────────
+function deleteEmployee(empId) {
+    const emp = allEmployees.find(e => e.emp_id === empId);
+    if (!emp) return;
+
+    const confirmed = confirm(`Delete ${empId} — ${emp.emp_name}?\n\nThis will remove them from the consolidated list.`);
+    if (!confirmed) return;
+
+    // Remove from both arrays
+    allEmployees      = allEmployees.filter(e => e.emp_id !== empId);
+    filteredEmployees = filteredEmployees.filter(e => e.emp_id !== empId);
+
+    // Recalculate stats and persist
+    const stats = {
+        total:  allEmployees.length,
+        active: allEmployees.filter(e => e.status === 'Active').length,
+        hold:   allEmployees.filter(e => e.status === 'Hold').length,
+    };
+    renderStats(stats);
+
+    const raw = localStorage.getItem(DATA_KEY);
+    if (raw) {
+        const obj = JSON.parse(raw);
+        obj.employees = allEmployees;
+        obj.stats     = stats;
+        localStorage.setItem(DATA_KEY, JSON.stringify(obj));
+    }
+
+    renderTable();
+}
+
+// Close modal on overlay click or Escape key
+document.getElementById('addModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAddModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeAddModal();
+});
+
+// ─────────────────────────────────────────────
+//  Utility
+// ─────────────────────────────────────────────
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
