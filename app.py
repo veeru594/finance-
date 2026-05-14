@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify, send_file
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from datetime import datetime
+from datetime import datetime, date
 import os
 import io
 import csv
@@ -775,6 +775,43 @@ def parse_college_file(filepath):
 
 
 # ---------------------------------------------------------------------------
+# STANDALONE LOP REPORT
+# ---------------------------------------------------------------------------
+def parse_lop_report_file(filepath):
+    """
+    Standalone LOP report with fixed structure.
+    Row 1 = title ('LOP'), row 2 = header, row 3+ = data.
+    Expected cols: S No | New Emp ID | Emp Name | LOP Days | Location | Category | Remarks
+    Returns list of (emp_id, lop_days) tuples where lop_days > 0.
+    """
+    wb = openpyxl.load_workbook(filepath, data_only=True)
+    ws = wb.active
+    result = []
+    col = {}
+    for i, row in enumerate(ws.iter_rows(values_only=True)):
+        if i == 0:
+            continue  # title row
+        if i == 1:  # header row
+            col = detect_cols(row)
+            if 'id'  not in col: col['id']  = 1
+            if 'lop' not in col: col['lop'] = 3
+            continue
+        raw_id = row[col['id']] if len(row) > col['id'] else None
+        if not is_valid_id(raw_id):
+            continue
+        emp_id  = safe_str(raw_id)
+        lop_raw = row[col['lop']] if len(row) > col['lop'] else None
+        try:
+            lop_val = float(str(lop_raw).strip()) if lop_raw is not None else 0
+        except Exception:
+            lop_val = 0
+        if lop_val > 0:
+            result.append((emp_id, int(lop_val)))
+    wb.close()
+    return result
+
+
+# ---------------------------------------------------------------------------
 # FLASK ROUTES
 # ---------------------------------------------------------------------------
 @app.route('/')
@@ -793,6 +830,8 @@ def process_files():
         'school':   request.files.get('school'),
         'college':  request.files.get('college'),
     }
+    lop_files = {k: request.files.get(f'{k}_lop')
+                 for k in ['core','project','cf','hk','retainer','school','college']}
 
     parsers = {
         'core':     parse_core_file,
@@ -807,9 +846,20 @@ def process_files():
     all_employees = {}
     errors = []
 
+    # Wipe all stale upload files from any previous session before saving new ones
+    for fname in os.listdir(UPLOAD_FOLDER):
+        if fname.startswith('upload_') and fname.endswith('.xlsx'):
+            try:
+                os.remove(os.path.join(UPLOAD_FOLDER, fname))
+            except Exception:
+                pass
+
     # Reset manifest to only track files uploaded in THIS request
     manifest_path = os.path.join(UPLOAD_FOLDER, 'manifest.json')
     uploaded_keys = [k for k, f in files.items() if f and allowed_file(f.filename)]
+    for k, lf in lop_files.items():
+        if lf and allowed_file(lf.filename):
+            uploaded_keys.append(f'{k}_lop')
     with open(manifest_path, 'w') as mf:
         json.dump({'uploaded': uploaded_keys}, mf)
 
@@ -851,6 +901,20 @@ def process_files():
 
         except Exception as e:
             errors.append(f'Error processing {key}: {str(e)}')
+
+    # Apply per-sheet standalone LOP reports — override LOP values from salary sheets
+    for key, lf in lop_files.items():
+        if not lf or not allowed_file(lf.filename):
+            continue
+        try:
+            fp = os.path.join(UPLOAD_FOLDER, f'upload_{key}_lop.xlsx')
+            lf.save(fp)
+            lop_records = parse_lop_report_file(fp)
+            for emp_id, lop_days in lop_records:
+                if emp_id in all_employees:
+                    all_employees[emp_id]['lop'] = str(lop_days)
+        except Exception as e:
+            errors.append(f'Error processing {key.title()} LOP: {str(e)}')
 
     employees_list = list(all_employees.values())
     total        = len(employees_list)
@@ -995,226 +1059,57 @@ def download_lop_csv():
     if not lop_period or not payout_period:
         return jsonify({'error': 'LOP Period and Payout Period are required'}), 400
 
-    records = []
-    errors  = []
-
-    # ---- required-files check: only allow files uploaded in the current session ----
-    REQUIRED = {
-        'onroll':  ['core', 'project', 'hk', 'cf'],
-        'offroll': ['retainer', 'school', 'college'],
+    # Use same parsers as the consolidated view — guarantees consistent LOP values
+    SOURCES = {
+        'onroll':  [('core', parse_core_file), ('project', parse_project_file),
+                    ('hk',   parse_hk_file),   ('cf',      parse_cf_file)],
+        'offroll': [('retainer', parse_retainer_file), ('school',  parse_school_file),
+                    ('college',  parse_college_file)],
     }
-    if csv_type in REQUIRED:
-        manifest_path = os.path.join(UPLOAD_FOLDER, 'manifest.json')
-        try:
-            with open(manifest_path) as mf:
-                uploaded_keys = json.load(mf).get('uploaded', [])
-        except Exception:
-            uploaded_keys = []
-        missing = [k for k in REQUIRED[csv_type] if k not in uploaded_keys]
-        if missing:
-            names = ', '.join(k.title() for k in missing)
-            return jsonify({'error': f'These files were not uploaded in this session: {names}. Please upload all required files and process again before downloading.'}), 400
-
-    if csv_type == 'onroll':
-        # --- CORE ---
-        fp = os.path.join(UPLOAD_FOLDER, 'upload_core.xlsx')
-        if os.path.exists(fp):
-            try:
-                wb = openpyxl.load_workbook(fp, data_only=True)
-                tab = find_tab(wb, ['Resigned', 'LOP'])
-                if not tab: raise ValueError("resigned/LOP tab not found")
-                ws = wb[tab]
-                records += parse_lop_section(ws, ['RESIGNED EMPLOYEES DETAILS', 'RESIGNED', 'RESIGNATIONS'], ['LOP DETAILS', 'LOP DETAIL', 'LOP'])
-                wb.close()
-            except Exception as e:
-                errors.append(f'Core: {e}')
-        else:
-            errors.append('Core file not found — please re-upload files')
-
-        # --- PROJECT ---
-        fp = os.path.join(UPLOAD_FOLDER, 'upload_project.xlsx')
-        if os.path.exists(fp):
-            try:
-                wb = openpyxl.load_workbook(fp, data_only=True)
-                tab = find_tab(wb, ['Resignations', 'LOP'])
-                if not tab: raise ValueError("resignations/LOP tab not found")
-                ws = wb[tab]
-                records += parse_lop_section(ws, ['RESIGNATIONS', 'RESIGNED'], ['LOP DETAILS', 'LOP DETAIL', 'LOP'])
-                wb.close()
-            except Exception as e:
-                errors.append(f'Project: {e}')
-        else:
-            errors.append('Project file not found — please re-upload files')
-
-        # --- HK — use LOP tab directly (active tab has unresolved formulas) ---
-        fp = os.path.join(UPLOAD_FOLDER, 'upload_hk.xlsx')
-        if os.path.exists(fp):
-            try:
-                wb = openpyxl.load_workbook(fp, data_only=True)
-                tab = find_tab(wb, ['LOP'])
-                if not tab: raise ValueError("LOP tab not found")
-                ws = wb[tab]
-                hk_col = {}
-                for i, row in enumerate(ws.iter_rows(values_only=True)):
-                    if i == 0: continue  # title row
-                    if i == 1:           # header row — detect columns
-                        hk_col = detect_cols(row)
-                        if 'id'  not in hk_col: hk_col['id']  = 1
-                        if 'lop' not in hk_col: hk_col['lop'] = 8
-                        continue
-                    if not row or not row[hk_col['id']]: continue
-                    hkid = safe_str(row[hk_col['id']])
-                    if hkid.upper() == 'HKID': continue
-                    lop_raw = row[hk_col['lop']] if len(row) > hk_col['lop'] else None
-                    try:
-                        lop_val = float(str(lop_raw).strip()) if lop_raw is not None else 0
-                    except:
-                        lop_val = 0
-                    if lop_val > 0:
-                        records.append((hkid, int(lop_val)))
-                wb.close()
-            except Exception as e:
-                errors.append(f'HK: {e}')
-        else:
-            errors.append('HK file not found — please re-upload files')
-
-        # --- CF ---
-        fp = os.path.join(UPLOAD_FOLDER, 'upload_cf.xlsx')
-        if os.path.exists(fp):
-            try:
-                wb = openpyxl.load_workbook(fp, data_only=True)
-                tab = find_tab(wb, ['Resigned', 'Left'])
-                if not tab: raise ValueError("resigned tab not found")
-                ws = wb[tab]
-                # CF LOP section header is just 'LOP' (single word, not 'LOP DETAILS')
-                section = None
-                header_skipped = False
-                sec_col = {}
-                for row in ws.iter_rows(values_only=True):
-                    if not any(c is not None for c in row): continue
-                    row_text = ' '.join(safe_str(c).upper() for c in row)
-                    if 'RESIGNATIONS' in row_text and section is None:
-                        section = 'first'; header_skipped = False; continue
-                    non_null = [safe_str(c).upper() for c in row if c is not None]
-                    if non_null == ['LOP'] or ('LOP' in row_text and 'DETAIL' in row_text):
-                        section = 'lop'; header_skipped = False; continue
-                    if not header_skipped:
-                        header_skipped = True
-                        sec_col = detect_cols(row)
-                        continue
-                    if section == 'lop':
-                        id_c  = sec_col.get('id', 1)
-                        lop_c = sec_col.get('lop', 3)
-                        emp_id = safe_str(row[id_c]) if len(row) > id_c else ''
-                        if not emp_id: continue
-                        lop_raw = row[lop_c] if len(row) > lop_c else None
-                        try:
-                            lop_val = float(str(lop_raw).strip()) if lop_raw is not None else 0
-                        except:
-                            lop_val = 0
-                        if lop_val > 0:
-                            records.append((emp_id, int(lop_val)))
-                wb.close()
-            except Exception as e:
-                errors.append(f'CF: {e}')
-        else:
-            errors.append('CF file not found — please re-upload files')
-
-        filename = f'LOP_Onroll_{payout_period}.csv'
-
-    elif csv_type == 'offroll':
-        # --- RETAINER — LOP tab, row 1=header (no title), data from row 2 ---
-        # cols: 0=EmpID, 1=Name, 2=Location, 3=LOP_Days(Final)
-        fp = os.path.join(UPLOAD_FOLDER, 'upload_retainer.xlsx')
-        if os.path.exists(fp):
-            try:
-                wb = openpyxl.load_workbook(fp, data_only=True)
-                tab = find_tab(wb, ['LOP'])
-                if not tab: raise ValueError("LOP tab not found")
-                ws = wb[tab]
-                lop_c = None; id_c = 0
-                for i, row in enumerate(ws.iter_rows(values_only=True)):
-                    if i == 0:
-                        lop_col = detect_cols(row)
-                        id_c = lop_col.get('id', 0)
-                        lop_c = lop_col.get('lop', 3)
-                        continue
-                    if not row or not row[id_c]: continue
-                    emp_id = safe_str(row[id_c])
-                    if emp_id.upper() in ('EMP ID', 'EMPLOYEE ID'): continue
-                    lop_raw = row[lop_c] if lop_c is not None and len(row) > lop_c else None
-                    try:
-                        lop_val = float(str(lop_raw).strip()) if lop_raw is not None else 0
-                    except:
-                        lop_val = 0
-                    if lop_val > 0:
-                        records.append((emp_id, int(lop_val)))
-                wb.close()
-            except Exception as e:
-                errors.append(f'Retainer: {e}')
-        else:
-            errors.append('Retainer file not found — please re-upload files')
-
-        # --- SCHOOL ---
-        fp = os.path.join(UPLOAD_FOLDER, 'upload_school.xlsx')
-        if os.path.exists(fp):
-            try:
-                wb = openpyxl.load_workbook(fp, data_only=True)
-                tab = find_tab(wb, ['Resignations', 'LOP'])
-                if not tab: raise ValueError("resignations/LOP tab not found")
-                ws = wb[tab]
-                records += parse_lop_section(ws, ['RESIGNATIONS', 'RESIGNED'], ['LOP DETAILS', 'LOP DETAIL', 'LOP'])
-                wb.close()
-            except Exception as e:
-                errors.append(f'School: {e}')
-        else:
-            errors.append('School file not found — please re-upload files')
-
-        # --- COLLEGE — Active tab, row 1=header (no title), data from row 2 ---
-        # cols: 0=SNo, 1=Month, 2=EmpID, 3=Name, ..., 8=LOP_Days
-        fp = os.path.join(UPLOAD_FOLDER, 'upload_college.xlsx')
-        if os.path.exists(fp):
-            try:
-                wb = openpyxl.load_workbook(fp, data_only=True)
-                tab = find_tab(wb, ['Active'])
-                if not tab: raise ValueError("Active tab not found")
-                ws = wb[tab]
-                col_c = {}
-                for i, row in enumerate(ws.iter_rows(values_only=True)):
-                    if i == 0:
-                        col_c = detect_cols(row)
-                        continue
-                    id_c  = col_c.get('id',  2)
-                    lop_c = col_c.get('lop', 8)
-                    if not row or len(row) <= id_c or not row[id_c]: continue
-                    emp_id = safe_str(row[id_c])
-                    if emp_id.upper() in ('EMP ID', 'EMPLOYEE ID'): continue
-                    lop_raw = row[lop_c] if len(row) > lop_c else None
-                    try:
-                        lop_val = float(str(lop_raw).strip()) if lop_raw is not None else 0
-                    except:
-                        lop_val = 0
-                    if lop_val > 0:
-                        records.append((emp_id, int(lop_val)))
-                wb.close()
-            except Exception as e:
-                errors.append(f'College: {e}')
-        else:
-            errors.append('College file not found — please re-upload files')
-
-        filename = f'LOP_Offroll_{payout_period}.csv'
-
-    else:
+    if csv_type not in SOURCES:
         return jsonify({'error': 'Invalid type — must be onroll or offroll'}), 400
 
-    # Abort if any file had processing errors
+    records = []
+    errors  = []
+    seen    = set()
+
+    for key, parser in SOURCES[csv_type]:
+        fp = os.path.join(UPLOAD_FOLDER, f'upload_{key}.xlsx')
+        if not os.path.exists(fp):
+            continue
+        try:
+            for emp in parser(fp):
+                emp_id = emp['emp_id']
+                if emp_id in seen:
+                    continue
+                try:
+                    lop_val = float(str(emp.get('lop') or 0))
+                except (ValueError, TypeError):
+                    lop_val = 0
+                if lop_val > 0:
+                    records.append((emp_id, int(lop_val)))
+                    seen.add(emp_id)
+        except Exception as e:
+            errors.append(f'{key.title()}: {e}')
+
+    # Apply any per-sheet standalone LOP override files
+    for key, _ in SOURCES[csv_type]:
+        fp = os.path.join(UPLOAD_FOLDER, f'upload_{key}_lop.xlsx')
+        if not os.path.exists(fp):
+            continue
+        try:
+            for emp_id, lop_days in parse_lop_report_file(fp):
+                records = [(e, d) for e, d in records if e != emp_id]
+                records.append((emp_id, lop_days))
+        except Exception as e:
+            errors.append(f'{key.title()} LOP override: {e}')
+
     if errors:
         return jsonify({'error': 'Could not generate CSV due to errors: ' + '; '.join(errors)}), 400
 
-    # Generate CSV
+    filename = (f'LOP_Onroll_{payout_period}.csv' if csv_type == 'onroll'
+                else f'LOP_Offroll_{payout_period}.csv')
     csv_content = generate_lop_csv_content(records, lop_period, payout_period)
-
-    # Return as downloadable file
     output = io.BytesIO(csv_content.encode('utf-8'))
     output.seek(0)
     return send_file(
@@ -1231,13 +1126,12 @@ def download_lop_csv():
 
 def calc_amount(doj):
     """
-    Financial year runs April–March. Amount = (13 - fy_month_index) * 20
-    April joiner → 240, May → 220, ... March → 20.
+    Financial year April–March: remaining months in FY × 20.
+    April joiner → 240, May → 220, June → 200, ... March → 20.
     """
-    if not isinstance(doj, datetime):
+    if not isinstance(doj, (datetime, date)):
         return 20
-    fy_index = ((doj.month - 4) % 12) + 1
-    return (13 - fy_index) * 20
+    return (12 - ((doj.month - 4) % 12)) * 20
 
 
 def get_new_joinees_from_file(filepath, tab_patterns, skip_rows, id_col_fallback, doj_col_fallback):
@@ -1347,19 +1241,6 @@ def download_new_joinee_excel():
     except ValueError:
         return jsonify({'error': 'Invalid format — use YYYY-MM'}), 400
 
-    # Require all 7 files uploaded in current session
-    required_keys = ['core', 'project', 'cf', 'hk', 'retainer', 'school', 'college']
-    manifest_path = os.path.join(UPLOAD_FOLDER, 'manifest.json')
-    try:
-        with open(manifest_path) as mf:
-            uploaded_keys = json.load(mf).get('uploaded', [])
-    except Exception:
-        uploaded_keys = []
-    missing = [k for k in required_keys if k not in uploaded_keys]
-    if missing:
-        names = ', '.join(k.title() for k in missing)
-        return jsonify({'error': f'These files were not uploaded in this session: {names}. Please upload all required files and process again.'}), 400
-
     # --- Collect new joinees from all sheets ---
     all_records = []
     errors      = []
@@ -1376,7 +1257,6 @@ def download_new_joinee_excel():
     for key, tab, skip, id_fb, doj_fb in sheet_configs:
         fp = os.path.join(UPLOAD_FOLDER, f'upload_{key}.xlsx')
         if not os.path.exists(fp):
-            errors.append(f'{key} file not found')
             continue
         try:
             recs = get_new_joinees_from_file(fp, tab, skip, id_fb, doj_fb)
@@ -1391,8 +1271,6 @@ def download_new_joinee_excel():
             all_records.extend(get_hk_new_joinees(fp))
         except Exception as e:
             errors.append(f'hk: {e}')
-    else:
-        errors.append('hk file not found')
 
     # --- Build Excel ---
     wb = openpyxl.Workbook()

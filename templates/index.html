@@ -447,6 +447,16 @@
             gap: 12px; margin-top: 6px; padding-top: 4px;
         }
 
+        /* ── Within-tile LOP input ── */
+        .lop-sep { height: 1px; background: #e2e8f0; margin: 10px 0 8px; }
+        .file-sub-label {
+            font-size: 10px; font-weight: 600;
+            color: #94a3b8; text-transform: uppercase; letter-spacing: .4px;
+            margin-bottom: 3px;
+        }
+        .lop-sub { color: #b4bfce; }
+        .opt-tag { font-weight: 400; font-size: 9px; color: #b4bfce; text-transform: none; letter-spacing: 0; }
+
         /* ── Section divider ── */
         .section-sep {
             height: 1px; background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
@@ -484,7 +494,7 @@
 <div class="tabs-bar">
     <button class="tab active" id="tab-upload"       onclick="switchTab('upload')">Upload &amp; Process</button>
     <button class="tab"        id="tab-consolidated" onclick="switchTab('consolidated')">Consolidated View</button>
-    <button class="tab"        id="tab-exports"      onclick="switchTab('exports')" disabled>Exports</button>
+    <button class="tab"        id="tab-exports"      onclick="switchTab('exports')">Exports</button>
 </div>
 
 <div class="page">
@@ -505,41 +515,76 @@
         <div class="upload-grid">
             <div class="upload-tile" id="card-core">
                 <div class="tile-label"><span class="tick">✓</span> Core Staff</div>
+                <div class="file-sub-label">Salary Sheet</div>
                 <input type="file" id="file-core" accept=".xlsx,.xls" onchange="handleFile(this,'core')">
                 <div class="fname" id="fname-core"></div>
+                <div class="lop-sep"></div>
+                <div class="file-sub-label lop-sub">LOP File <span class="opt-tag">optional</span></div>
+                <input type="file" id="file-core_lop" accept=".xlsx,.xls" onchange="handleFile(this,'core_lop')">
+                <div class="fname" id="fname-core_lop"></div>
             </div>
             <div class="upload-tile" id="card-project">
                 <div class="tile-label"><span class="tick">✓</span> Project Staff</div>
+                <div class="file-sub-label">Salary Sheet</div>
                 <input type="file" id="file-project" accept=".xlsx,.xls" onchange="handleFile(this,'project')">
                 <div class="fname" id="fname-project"></div>
+                <div class="lop-sep"></div>
+                <div class="file-sub-label lop-sub">LOP File <span class="opt-tag">optional</span></div>
+                <input type="file" id="file-project_lop" accept=".xlsx,.xls" onchange="handleFile(this,'project_lop')">
+                <div class="fname" id="fname-project_lop"></div>
             </div>
             <div class="upload-tile" id="card-cf">
                 <div class="tile-label"><span class="tick">✓</span> Community Facilitator</div>
+                <div class="file-sub-label">Salary Sheet</div>
                 <input type="file" id="file-cf" accept=".xlsx,.xls" onchange="handleFile(this,'cf')">
                 <div class="fname" id="fname-cf"></div>
+                <div class="lop-sep"></div>
+                <div class="file-sub-label lop-sub">LOP File <span class="opt-tag">optional</span></div>
+                <input type="file" id="file-cf_lop" accept=".xlsx,.xls" onchange="handleFile(this,'cf_lop')">
+                <div class="fname" id="fname-cf_lop"></div>
             </div>
             <div class="upload-tile" id="card-hk">
                 <div class="tile-label"><span class="tick">✓</span> Housekeeping</div>
+                <div class="file-sub-label">Salary Sheet</div>
                 <input type="file" id="file-hk" accept=".xlsx,.xls" onchange="handleFile(this,'hk')">
                 <div class="fname" id="fname-hk"></div>
+                <div class="lop-sep"></div>
+                <div class="file-sub-label lop-sub">LOP File <span class="opt-tag">optional</span></div>
+                <input type="file" id="file-hk_lop" accept=".xlsx,.xls" onchange="handleFile(this,'hk_lop')">
+                <div class="fname" id="fname-hk_lop"></div>
             </div>
         </div>
 
         <div class="upload-grid-3">
             <div class="upload-tile" id="card-retainer">
                 <div class="tile-label"><span class="tick">✓</span> Retainer</div>
+                <div class="file-sub-label">Salary Sheet</div>
                 <input type="file" id="file-retainer" accept=".xlsx,.xls" onchange="handleFile(this,'retainer')">
                 <div class="fname" id="fname-retainer"></div>
+                <div class="lop-sep"></div>
+                <div class="file-sub-label lop-sub">LOP File <span class="opt-tag">optional</span></div>
+                <input type="file" id="file-retainer_lop" accept=".xlsx,.xls" onchange="handleFile(this,'retainer_lop')">
+                <div class="fname" id="fname-retainer_lop"></div>
             </div>
             <div class="upload-tile" id="card-school">
                 <div class="tile-label"><span class="tick">✓</span> School</div>
+                <div class="file-sub-label">Salary Sheet</div>
                 <input type="file" id="file-school" accept=".xlsx,.xls" onchange="handleFile(this,'school')">
                 <div class="fname" id="fname-school"></div>
+                <div class="lop-sep"></div>
+                <div class="file-sub-label lop-sub">LOP File <span class="opt-tag">optional</span></div>
+                <input type="file" id="file-school_lop" accept=".xlsx,.xls" onchange="handleFile(this,'school_lop')">
+                <div class="fname" id="fname-school_lop"></div>
             </div>
             <div class="upload-tile" id="card-college">
                 <div class="tile-label"><span class="tick">✓</span> College</div>
+                <div class="file-sub-label">Salary Sheet</div>
                 <input type="file" id="file-college" accept=".xlsx,.xls" onchange="handleFile(this,'college')">
                 <div class="fname" id="fname-college"></div>
+                <div class="lop-sep"></div>
+                <div class="file-sub-label lop-sub">LOP File <span class="opt-tag">optional</span></div>
+                <input type="file" id="file-college_lop" accept=".xlsx,.xls" onchange="handleFile(this,'college_lop')">
+                <div class="fname" id="fname-college_lop"></div>
             </div>
         </div>
 
@@ -706,8 +751,8 @@
                        oninput="updateStored('payoutPeriod', this.value)">
             </div>
             <div class="export-btns">
-                <button class="btn btn-green"  id="lopOnrollBtn"  onclick="downloadLop('onroll')"  disabled>Download On-roll CSV</button>
-                <button class="btn btn-indigo" id="lopOffrollBtn" onclick="downloadLop('offroll')" disabled>Download Off-roll CSV</button>
+                <button class="btn btn-green"  id="lopOnrollBtn"  onclick="downloadLop('onroll')" >Download On-roll CSV</button>
+                <button class="btn btn-indigo" id="lopOffrollBtn" onclick="downloadLop('offroll')">Download Off-roll CSV</button>
             </div>
             <div class="status-msg" id="lopStatus"></div>
         </div>
@@ -724,7 +769,7 @@
                        oninput="updateStored('processingMonth', this.value)">
             </div>
             <div class="export-btns">
-                <button class="btn btn-blue" id="newJoineeBtn" onclick="downloadNewJoinee()" disabled>Download New Joinee Excel</button>
+                <button class="btn btn-blue" id="newJoineeBtn" onclick="downloadNewJoinee()">Download New Joinee Excel</button>
             </div>
             <div class="status-msg" id="newJoineeStatus"></div>
         </div>
@@ -931,13 +976,15 @@ function switchTab(name) {
 //  File upload handling
 // ─────────────────────────────────────────────
 function handleFile(input, key) {
-    const tile  = document.getElementById('card-' + key);
-    const fname = document.getElementById('fname-' + key);
+    const isLop   = key.endsWith('_lop');
+    const tileKey = isLop ? key.slice(0, -4) : key;
+    const tile    = document.getElementById('card-' + tileKey);
+    const fname   = document.getElementById('fname-' + key);
     if (input.files && input.files[0]) {
-        tile.classList.add('done');
+        if (!isLop) tile.classList.add('done');
         fname.textContent = input.files[0].name;
     } else {
-        tile.classList.remove('done');
+        if (!isLop) tile.classList.remove('done');
         fname.textContent = '';
     }
 }
@@ -951,7 +998,8 @@ document.getElementById('processBtn').addEventListener('click', async () => {
     errBox.classList.add('hidden');
 
     const fd   = new FormData();
-    const keys = ['core','project','cf','hk','retainer','school','college'];
+    const keys = ['core','project','cf','hk','retainer','school','college',
+                  'core_lop','project_lop','cf_lop','hk_lop','retainer_lop','school_lop','college_lop'];
     let hasAny = false;
     keys.forEach(k => {
         const fi = document.getElementById('file-' + k);
